@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation Template for CloudWatch Logs.
+Resources:
+  ELBSG:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "dev-tl-albv2-01"
+      VpcId: !ImportValue sand-vpcid
+      Tags:
+      - Key: Name
+        Value: "tl-elb-sg"
+      SecurityGroupIngress:
+        -
+          CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          ToPort: "80"
+          FromPort: "80"
+        -
+          CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          ToPort: "443"
+          FromPort: "443"
+      SecurityGroupEgress:
+        -
+          CidrIp: 0.0.0.0/0
+          ToPort: "-1"
+          IpProtocol: "-1"
+  ELBv2:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Subnets:
+      - !ImportValue sand-SubTL
+      - !ImportValue sand-SubTL2
+      LoadBalancerAttributes:
+      - Key: idle_timeout.timeout_seconds
+        Value: '50'
+      SecurityGroups:
+      - !Ref ELBSG
+      Tags:
+      - Key: Name
+        Value: "tl-elb"
+      - Key: Project
+        Value: ProjectDevops
+Outputs:
+  ELBv2:
+    Description: "ELB"
+    Value: 
+      !Ref ELBv2        
+    Export:
+      Name: ELBv2
+  ELBSG:
+    Description: "ssh public access"
+    Value: 
+      !GetAtt
+        - ELBSG
+        - GroupId
+    Export:
+      Name: ELBSG
+

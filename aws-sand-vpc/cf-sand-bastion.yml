@@ -1,0 +1,64 @@
+# Depends on having ssh key.
+# Additions could be using google two-factor
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  SSHKEY:
+    Type: String
+    Description: Key Name For EC2 instances.
+Mappings: #NICE TO AUTOPOPULATE OR PULL FROM FILE
+  RegionMap:
+    us-east-1:
+      "AMALINUX" : "ami-1853ac65" # AMALINUX SEP 2017 
+    us-east-2:
+      "AMALINUX" : "ami-25615740" # AMALINUX SEP 2017
+    us-west-1:
+      "AMALINUX" : "ami-bf5540df" # AMALINUX SEP 2017
+Resources:
+  bastionec2:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
+      InstanceType: "t2.micro"
+      SubnetId: !ImportValue sand-SubTL
+      #KeyName: awsandbeyond #Try and pass in
+      KeyName: !Ref SSHKEY
+      SecurityGroupIds: #VPC SEC GROUPS
+         - !Ref bastionsg #built with VPC stack
+      IamInstanceProfile: !ImportValue CWLogIProfile 
+      Tags:
+        -
+          Key: "Name"
+          Value: "sand-bastion"
+      UserData: 
+        "Fn::Base64":
+          !Sub |
+            #!/bin/bash
+            yum -y update
+            yum -y install git
+  bastionsg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "bastion-sg"
+      GroupDescription: "SSH traffic in, all traffic out."
+      VpcId: !ImportValue sand-vpcid
+      Tags:
+        -
+          Key: "Name"
+          Value: "bastion-sg"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+Outputs:
+  bastionsg:
+    Description: "ssh ec2 key"
+    Value: 
+      !GetAtt
+        - bastionsg
+        - GroupId
+    Export:
+      Name: bastionsg
