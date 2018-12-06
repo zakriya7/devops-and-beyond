@@ -1,0 +1,160 @@
+AWSTemplatFormationVersion: '2010-09-09'
+Description: 'Cloudformation template for creating ELB/ASG'
+Parameters:
+  EnvironmentName:
+    Description: env name
+    Type: String
+    AllowedValues: "[dev", "qa", "prod"]
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.small
+    AllowedValues: [t2.small]
+    ConstraintDescription: must be a valid EC2 instance type.
+  AMI:
+    Description: AMI to deploy
+    Type: AWS::EC2::Image::Id
+    ConstraintDescription: must be a valid image id for the region
+  AppTargetGroupARNs: # Built in ELB script
+    Description: list of target group arns
+    Type: CommaDelimitedList
+  KeyName:
+    Description: The EC2 Key Pair to allow SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: Must be the name of an existing EC2 KeyPair.
+  InstanceProfile:
+    Description: Instance profile to attach
+    Type: String
+  VpcId:
+    Description: VPC to deploy the stack into
+    Type: AWS::EC2::VPC::Id
+  Subnets:
+    Description: Subnets for the asg
+    Type: List<AWS::EC2::SubnetId>
+    ConstraintDescription: for HA provide at least two subnets associated with different AZs.
+  AsgMinSize:
+    Description: minimum number of instances in ASG
+    Type: Number
+    Default: 1
+  AsgMaxSize:
+    Description: maximum number of instances in ASG
+    Type: Number
+    Default: 1
+  AsgDesiredSize:
+    Description: desired number of instances in ASG
+    Type: Number
+    Default: 1
+  InstanceSecurityGroups:
+    Description: list of sgs for instance
+    Type: CommaDelimitedList
+  HealthCheckTarget:
+    Description: health check endpoint
+    Type: String
+#  SnsTopic:
+#    Description: sns topic to send alarms to 
+#    Type: String
+Resources:
+  AppAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier: !Ref 'Subnets'
+    LaunchConfigurationName: !Ref 'AppTargetGroupARNS'
+    HealthCheckType: ELB
+    HealthCheckGracePeriod: '720'
+    NotificationConfigurations:
+      - NotificationTypes:
+          - "autoscaling:EC2_INSTANCE_LAUNCH"
+          - "autoscaling:EC2_INSTANCE_LAUNCH_ERROR"
+          - "autoscaling:EC2_INSTANCE_TERMINATE"
+          - "autoscaling:EC2_INSTANCE_TERMINATE_ERROR"
+        TopicARN:  [!Ref 'SnsTopic']
+    MetricsCollection:
+      - Granularity: 1Minute 
+    Tags:
+      - Key: "Name"
+        Value: !Ref "AWS::StackName"
+        PropagateAtLauch: true
+      - Key: "Software"
+        Value: "Django"
+        PropagateAtLaunch: true
+    CreationPolicy:
+        ResourceSignal:
+          Timeout: PT15M
+          Count: !Ref 'AsgMinSize'
+    LaunchConfig:
+      Type: AWS::AutoScaling::LauchConfiguration
+      Properties:
+        KeyName: !Ref 'KeyName'
+        ImageId: !Ref 'InstanceType'
+        IamInstanceProfile: !Join ['', ['arn:aws:iam::', !Ref 'AWS::AccountId', ':instance-profile/', !Ref 'InstanceProfile']]
+        BlockDeviceMappings:
+          - DeviceName: "/dev/sda1"
+            Ebs:
+              DeleteOnTermination: "false"
+              volumeType: "gp2" # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html
+        UserData:
+          Fn::Base64:
+            !Sub |
+            #!/bin/bash -ex
+
+            exec > /tmp/userdata.log 2>&1
+
+            function signal_result() {
+              /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource AppAutoScalingGroup --region ${AWS::Region}
+            }
+
+            trap signal_result 0
+
+            if [ -f /var/awslogs/etc/awslogs.cong ]; then
+
+            cat > /var/awslogs/etc/awslogs.con <<CLOUDWATCHAGENTCONF
+            [general]
+            state_file = /var/awslogs/state/agent-state
+            logging_config_file = /var/awslogs/etc/logging_config_file
+
+            [/tmp/userdata]
+            file = /tmp/userdata.log
+          log_group_name = /static/${AWS::StackName}
+          log_stream_name = {instance_id}_{ip_address}_userdata_log
+          CLOUDWATCHAGENTCONF
+
+          service awslogs restart
+
+          aws s3 cp s3://${EnvironmentName}-static-cfn-support-${AWS:AccountId}-${AWS::Region}/${AWS::StackName}/userdata.sh .
+
+          source userdata.sh
+
+    AppScaleUpPolicy: 
+      Type: AWS::AutoScaling::ScalingPolicy
+      Properties:
+        AdjustmentType: ChangeInCapacity
+        AutoScalingGroupName: !Ref 'AppAutoScalingGroup'
+        Cooldown: '60'
+        ScalingAdjustment: '1'
+    AppScalingPolicy:
+      Type: AWS:AutoScaling::AutoScalingGroup'
+      Properities:
+        AdjustmentType: ChangeInCapacity
+        AutoScalingGroupName: !Ref 'AppAutoScalingGroup'
+        Cooldown: '60'
+        ScalingAdjustment: '1'
+    CPUAlarmHigh:
+      Type: AWS::Cloudwatch::Alarm
+      Properties:
+        AlarmDescription: Scale-up if CPU > 50% for 10 minutes
+        MetricName: CPUUtilization
+        Namespace: AWS/EC2
+        Statistic: Average
+        Period: '300'
+        EvaluationPeriods: '2'
+        Threshold: '30'
+        AlarmActions: [!Ref 'AppScaleDownPolicy']
+        Dimensions: 
+        - Name: AutoScalingGroupName
+          Value: !Ref 'AppAutoScalingGroup'
+        ComparisionOperator: LessThanThreshold
+Outputs
+  AppAutoScalingGroup:
+    Description: elb name
+    value: !Ref 'AppAutoSclalingGroup'
+

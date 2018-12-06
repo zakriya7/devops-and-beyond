@@ -1,0 +1,55 @@
+# Simplified VPC so need to ssh directly to NGINX host
+Parameters:
+  EnvironmentSize:
+    Type: String
+    Default: SMALL
+    AllowedValues:
+      - SMALL
+      - MEDIUM
+      - LARGE
+    Description: Select Environment Size (S,M,L)
+  SSHKEY:
+    Type: String
+    Description: Key Name For EC2 instances.
+Mappings:
+  RegionMap:
+    us-east-1:
+      "AMALINUX" : "ami-c481fad3" # AMALINUX SEP 2016 
+    us-east-2:
+      "AMALINUX" : "ami-71ca9114" # AMALINUX SEP 2016
+    us-west-1:
+      "AMALINUX" : "ami-de347abe" # AMALINUX SEP 2016
+  InstanceSize:
+    SMALL:
+      "EC2" : "t2.micro"
+      "DB" : "db.t2.micro"
+    MEDIUM:
+      "EC2" : "t2.small"  
+      "DB" : "db.t2.small"
+Resources:
+  nginxsg: ## NEED BOTH PORT 80, 22.
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "nginx-sg"
+      GroupDescription: "http traffic in, all traffic out."
+      VpcId: !ImportValue sand-vpcid
+      Tags:
+      - Key: Name
+        Value: "nginx-sg"
+        #SecurityGroupIngress:
+        #  - IpProtocol: tcp
+        #  FromPort: '80' 
+        #  ToPort: '80'
+        #  CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+  nginxingress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref nginxsg
+      #GroupName: !Ref nginxsg
+      IpProtocol: tcp
+      FromPort: '80'
+      ToPort: '80'
+      SourceSecurityGroupId: !Ref nginxsg

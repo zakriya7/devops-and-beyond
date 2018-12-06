@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: VPC for SANDbox R&D.
+Parameters:
+  BucketName:
+    Type: String
+Resources:
+  S3HTMLBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      AccessControl: PublicRead
+      BucketName: !Ref BucketName
+      WebsiteConfiguration:
+        ErrorDocument: index.html
+        IndexDocument: error.html
+  BucketPolicyApp:
+    Type: "AWS::S3::BucketPolicy"
+    Properties:
+      Bucket: !Ref S3HTMLBucket
+      PolicyDocument:
+        Statement:
+          -
+            Sid: "ABC123"
+            Action:
+              - "s3:GetObject"
+            Effect: Allow
+            Resource: !Join ["", ["arn:aws:s3:::", !Ref S3HTMLBucket, "/*"]]
+            Principal:
+              AWS:
+                - "*"
+  VPC:  #Subnets need modified for DEV design.
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 172.16.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default 
+      Tags:
+        -
+          Key: "Name"
+          Value: "vpc-sand"
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway    
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  SubTL:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs ]
+      CidrBlock: 172.16.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        -
+          Key: "Name"
+          Value: "sand-subtl1"
+  SubTL2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs ]
+      CidrBlock: 172.16.2.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        -
+          Key: "Name"
+          Value: "sand-subtl2"
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+  InternetRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGateway
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref RouteTable
+  SubTLAZRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref SubTL
+  SubTL2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref SubTL2
+Outputs:
+  vpcid:
+    Description: ID of Shared Infrastructure VPC
+    Value: !Ref VPC
+    Export: # added to export
+      Name: sand-vpcid 
+  SubTL: 
+    Description: The subnet ID to use for public web servers
+    Value: !Ref SubTL
+    Export: 
+      Name: sand-SubTL
+  SubTL2: 
+    Description: The subnet ID to use for public web servers
+    Value: !Ref SubTL2
+    Export: 
+      Name: sand-SubTL2
+  S3HTMLBucket:
+    Description: Shared Infrastructure html Bucket
+    Value: !GetAtt S3HTMLBucket.WebsiteURL
+    Export: # added to export
+      Name: sharedinf-htmlbucketurl

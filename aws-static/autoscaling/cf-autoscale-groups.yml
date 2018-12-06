@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: '2010-09-09'
+# NEED TO ADD PROPERTIES FOR AMI ETC.
+Description: AWS CloudFormation Template for CloudWatch Logs.
+Resources:
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties: 
+      VPCZoneIdentifier:
+        - !ImportValue sand-SubTL
+        - !ImportValue sand-SubTL2
+      LaunchConfigurationName: 
+        Ref: "LaunchConfig"
+      MinSize: "2"
+      MaxSize: "2"
+      TargetGroupARNs:
+        - !ImportValue TGArn
+      MetricsCollection: 
+        - 
+          Granularity: "1Minute"
+          Metrics: 
+            - "GroupMinSize"
+            - "GroupMaxSize"
+  LaunchConfig: 
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties: 
+      KeyName: "devopsandbeyond" 
+      ImageId: ami-0922553b7b0369273
+      UserData: 
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash -x
+            exec > /tmp/part-001.log 2>&1
+            sudu su -
+            yum -y update
+            amazon-linux-extras install nginx1.12
+            systemctl enable nignx
+            service nginx start
+            # NOT SURE THIS WORKS
+            mkdir  /root/.aws
+            cat >> /root/.aws/conf << EOF
+            [default]
+            region = us-east-1
+            EOF
+            cd /usr/share/nginx/html/
+            SERVER=$(hostname)
+            echo "$SERVER" >server.html
+            #  MAKE SURE EC2 HAS AN IAM ROLE
+            aws s3 cp s3://davidbenna/ . --recursive
+      SecurityGroups: 
+        - Ref: "InstanceSecurityGroup"
+      InstanceType: t2.micro
+  InstanceSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Auto-Static"
+      VpcId: !ImportValue sand-vpcid
+      Tags:
+      - Key: Name
+        Value: "InstanceSecurityGroup"
+  SGBaseIngress:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref InstanceSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !ImportValue ELBSG

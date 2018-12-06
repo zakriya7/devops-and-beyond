@@ -1,0 +1,41 @@
+Resources:
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /server.html
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 4
+      Matcher:
+        HttpCode: '200'
+      Name: NginxTargets
+      Port: 10
+      Protocol: HTTP
+      TargetGroupAttributes:
+      - Key: deregistration_delay.timeout_seconds
+        Value: '20'
+      Targets:
+      - Id:
+          !ImportValue nginx1
+        Port: 80
+      - Id:
+          !ImportValue nginx2
+        Port: 80
+      UnhealthyThresholdCount: 3
+      VpcId: !ImportValue sand-vpcid
+      Tags:
+      - Key: key
+        Value: value
+      - Key: key2
+        Value: value2
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn:
+        !ImportValue ELBv2
+      Port: '80'
+      Protocol: HTTP

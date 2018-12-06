@@ -1,0 +1,136 @@
+/*---------------------------------------------*/
+/* BASIC SETUP */
+/*---------------------------------------------*/
+
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html
+body {
+    background-color: azure;
+    color: #555555;
+   /* font-family: 'Lato', 'Arial', sans-serif;*/
+    font-family: 'Lato', 'Arial', sans-serif;
+    font-weight: 300;
+    font-size: 20px;
+    text-rendering: optimizeLegibility;
+}
+
+/*---------------------------------------------*/
+/* REUSABLE SETUP */
+/*---------------------------------------------*/
+
+.row {
+    max-width: 1140px;
+    margin: auto;
+}
+
+/* ------- Headers ---------*/
+h1 {
+    margin: 0;
+    color: #ffffff;
+    font-size: 200%;
+    text-transform: uppercase;
+}
+
+h2 {
+    margin: 0;
+   /* color: #e7d1d1fd;*/
+    color:#f38787;
+    font-size: 150%;
+}
+
+h3 {
+    margin: 0;
+    color:#f38787;
+    font-size: 100%;
+}
+
+
+/* ------- Buttons -----------*/
+.btn:link,
+.btn:visited {
+    display: inline-block;
+    padding: 10px 30px;
+    font-weight: 300;
+    text-decoration: none;
+    border-radius: 200px;
+}
+
+.btn-solid:link,
+.btn-solid:visited {
+    background-color: coral; 
+    border: coral; 
+    color: #ffffff
+}
+
+.btn-empty:link, 
+.btn-empty:visited {
+    border: 1px solid coral; 
+    color: coral; 
+}
+
+.btn:hover,
+.btn:active {
+    background-color: rgba(255, 102, 0, 0.753)
+}
+
+.btn-empty:hover,
+.btn-empty:active {
+    color: #ffffff;
+}
+
+/*---------------------------------------------*/
+/* HEADER */
+/*---------------------------------------------*/
+
+header {
+    background-image: linear-gradient(rgba(0,0,3, 0.5),rgba(0,0,3, 0.3)), url(img/ball-bright-close-up-207489.jpg);
+    background-size: cover;
+    background-position: center;
+    height: 20vh;
+}
+
+.history-text {
+    position: absolute;
+    width: 90%;
+    top: 23%;
+    margin-left: 5%;
+    margin-right: 5%;
+}
+
+.home {
+    height: 50px;
+    width: auto;
+    float: left;
+    margin-top: 45px;
+}
+
+.main-nav {
+    float: left;
+    list-style: none;
+    margin-top: 55px;
+}
+
+.main-nav li {
+    display: inline-block;
+    margin-left: 40px;
+    color: #ffffff;
+}
+
+.main-nav li a:link, 
+.main-nav li a:visited {
+    color: #ffffff;
+    text-decoration: none;
+    text-transform: uppercase;
+    font-size: 90%;
+    border-bottom: 2px solid transparent;
+}
+
+.main-nav li a:hover, 
+.main-nav li a:active {
+    border-bottom: 2px solid #e67e22;
+}

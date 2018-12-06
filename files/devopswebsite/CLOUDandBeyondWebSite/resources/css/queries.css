@@ -1,0 +1,54 @@
+/* Big screens to 1200px */
+@media only screen and (max-width: 1600px) {
+    .text-box1 {
+        width: 100%;
+        padding: 0 2%;
+    }
+    h3 {
+        color: #F8F9F9;
+        font-weight: 500;
+    }    
+
+    .row { padding: 0 2% ; }
+}
+
+
+/* Big screens to 1200px */
+@media only screen and (max-width: 740px) {
+    .text-box1 {
+        width: 100%;
+        padding: 0 2%;
+    }
+
+    .row { padding: 0 2% ; }
+    h1 {
+        font-size: 28px;
+        font-weight: 500;
+      }
+    h3 {
+        font-size: 18px;
+        font-weight: 400;
+        color: #F8F9F9;
+      }
+
+}
+
+/* Big screens to 543px */
+@media only screen and (max-width: 543px) {
+    .text-box1 {
+        width: 100%;
+        padding: 0 2%;
+    }
+
+    .row { padding: 0 2% ; }
+    h1 {
+        font-size: 18px;
+        font-weight: 400;
+      }
+    h3 {
+        font-size: 14px;
+        font-weight: 400;
+        color: white;
+      }
+
+}
